@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Guru{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header Navigasi -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center text-xl font-bold">
+                        👨‍🏫 EMOTRACK
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-600 mr-4">Halo, <strong>{{ session.username }}</strong>!</span>
+                    <a href="/logout" class="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Konten Utama -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Kolom Kiri: Kelola Kelas -->
+                <div class="md:col-span-1 bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4">Kelola Kelas Saya</h2>
+                    <a href="{{ url_for('buat_kelas') }}" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 mb-4">
+                        Buat Kelas Baru
+                    </a>
+                    <h3 class="text-lg font-medium text-gray-700 mt-4 mb-2">Kelas yang Anda Kelola:</h3>
+                    {% if kelas_dikelola %}
+                        <ul class="space-y-2">
+                        {% for kelas in kelas_dikelola %}
+                            <li class="p-3 bg-gray-50 rounded-md flex justify-between items-center">
+                                <span class="font-medium">{{ kelas.nama_kelas }}</span>
+                                <a href="/live_class/{{ kelas.id }}" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold">Masuk Ruang Kontrol</a>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-sm text-gray-500">Anda belum membuat kelas.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Kolom Kanan: Permintaan Bergabung -->
+                <div class="md:col-span-2 bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4">Permintaan Bergabung (Pending)</h2>
+                    {% if permintaan_pending %}
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Siswa</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for p in permintaan_pending %}
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ p[0].username }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ p[1].nama_kelas }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <form action="/approve" method="post" class="inline">
+                                                <input type="hidden" name="user_id" value="{{ p[0].id }}">
+                                                <input type="hidden" name="kelas_id" value="{{ p[1].id }}">
+                                                <button type="submit" class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Setujui</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-sm text-gray-500">Tidak ada permintaan bergabung yang baru.</p>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

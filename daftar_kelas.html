@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Cari Kelas Baru{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header Navigasi -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center text-xl font-bold">
+                        👨‍🏫 EMOTRACK
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-600 mr-4">Halo, <strong>{{ session.username }}</strong>!</span>
+                    <a href="/logout" class="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Konten Utama -->
+    <main class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4">Daftar Semua Kelas yang Tersedia</h2>
+                
+                {% if semua_kelas %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kelas</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guru Pengampu</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for kelas in semua_kelas %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ kelas.nama_kelas }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ kelas.guru.username }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <form method="post" class="inline">
+                                        <input type="hidden" name="kelas_id" value="{{ kelas.id }}">
+                                        <button type="submit" class="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Gabung Kelas</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-sm text-gray-500 mt-4">Tidak ada kelas baru yang tersedia saat ini.</p>
+                {% endif %}
+            </div>
+            <div class="mt-8 text-center">
+                <a href="{{ url_for('dashboard_siswa') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                    &larr; Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

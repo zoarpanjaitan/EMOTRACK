@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Hasil Analisis - {{ kelas.nama_kelas }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header Navigasi -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center text-xl font-bold">👨‍🏫 EMOTRACK</div>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-600 mr-4">Halo, <strong>{{ session.username }}</strong>!</span>
+                    <a href="/logout" class="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Konten Utama -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Laporan Analisis Emosi: {{ kelas.nama_kelas }}</h2>
+            
+            {% if laporan_sesi %}
+                <div class="space-y-6">
+                {% for sesi in laporan_sesi %}
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="font-semibold text-gray-700">
+                            Kesimpulan Sesi Jepretan - {{ sesi.timestamp.strftime('%d %B %Y, %H:%M:%S') }}
+                            <span class="text-sm font-normal text-gray-500">({{ sesi.total_siswa }} siswa terdeteksi)</span>
+                        </h3>
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Kolom Kiri: Persentase Emosi -->
+                            <div>
+                                <h4 class="text-md font-medium text-gray-600 mb-2">Distribusi Emosi:</h4>
+                                <div class="space-y-2">
+                                    {% for emotion, perc_data in sesi.percentages.items() %}
+                                    <div>
+                                        <div class="flex justify-between mb-1">
+                                            <span class="text-sm font-medium text-gray-700">{{ emotion.capitalize() }}</span>
+                                            <!-- Gunakan teks 'display' yang sudah siap -->
+                                            <span class="text-sm font-medium text-gray-700">{{ perc_data.display }}</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                            <!-- Gunakan teks 'style_width' yang sudah siap -->
+                                            <div class="bg-indigo-600 h-2.5 rounded-full" style="width: {{ perc_data.style_width }}"></div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <!-- Kolom Kanan: Kesimpulan & Solusi -->
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="text-md font-medium text-gray-600 mb-2">Kesimpulan & Solusi</h4>
+                                <p class="text-sm text-gray-800">
+                                    Emosi dominan pada sesi ini adalah <strong>{{ sesi.dominant_emotion.capitalize() }}</strong>.
+                                </p>
+                                <p class="mt-2 text-sm text-gray-600">
+                                    {{ sesi.suggestion }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white p-6 rounded-lg shadow text-center">
+                    <p class="text-gray-500">Belum ada data analisis untuk kelas ini. Masuk ke ruang kontrol dan klik "Ambil Gambar & Analisis" untuk memulai.</p>
+                </div>
+            {% endif %}
+
+            <div class="mt-8">
+                <a href="{{ url_for('dashboard_guru') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                    &larr; Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Ruang Kelas - {{ kelas.nama_kelas }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header Navigasi -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center text-xl font-bold">
+                        👨‍🏫 EMOTRACK
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-600 mr-4">Halo, <strong>{{ session.username }}</strong>!</span>
+                    <a href="/logout" class="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Konten Utama -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- Kolom Utama -->
+                <div class="md:col-span-2 bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold text-gray-800">Ruang Kelas: {{ kelas.nama_kelas }}</h2>
+                    <p class="text-sm text-gray-600 mt-1 mb-4">Selamat datang! Sesi pembelajaran sedang berlangsung. Harap tetap fokus pada materi.</p>
+                    
+                    <!-- Video disembunyikan dari siswa -->
+                    <video id="video" width="640" height="480" autoplay playsinline style="display: none;"></video>
+                    
+                    <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm text-blue-700">
+                            <strong>Info:</strong> Kamera Anda aktif untuk analisis pembelajaran, namun tidak akan ditampilkan di layar Anda untuk menjaga fokus.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Sidebar untuk Daftar Teman -->
+                <div class="md:col-span-1 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-800 border-b pb-3 mb-4">Teman Sekelas</h3>
+                    {% if teman_sekelas %}
+                        <ul class="space-y-2">
+                            {% for teman in teman_sekelas %}
+                                <li class="p-3 bg-gray-50 rounded-md">
+                                    <span class="font-medium text-gray-800">{{ teman.username }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-sm text-gray-500">Belum ada siswa lain di kelas ini.</p>
+                    {% endif %}
+                </div>
+            </div>
+             <div class="mt-8">
+                <a href="{{ url_for('dashboard_siswa') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                    &larr; Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        const video = document.getElementById('video');
+        let stream;
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const context = canvas.getContext('2d');
+
+        function startCamera() {
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (s) {
+                        stream = s;
+                        video.srcObject = stream;
+                    }).catch(e => console.log("Error kamera:", e));
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        }
+
+        // --- FUNGSI DIPERBARUI ---
+        // Fungsi sekarang menerima ID grup dari server
+        function sendFrame(captureGroupId) {
+            if (!stream) return;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            let dataURL = canvas.toDataURL('image/jpeg', 0.7);
+            // Kirim gambar DAN ID grup kembali ke server
+            socket.emit('video_frame', { image: dataURL, capture_group_id: captureGroupId });
+            console.log("Frame dikirim ke server untuk analisis dengan grup ID: " + captureGroupId);
+        }
+
+        socket.on('connect', () => {
+            const classId = "{{ kelas.id }}";
+            socket.emit('join_student_room', { room: classId });
+        });
+
+        socket.on('student_command', (data) => {
+            if (data.command === 'start_camera') {
+                startCamera();
+            } else if (data.command === 'stop_camera') {
+                stopCamera();
+            }
+        });
+
+        // --- LISTENER DIPERBARUI ---
+        // Listener sekarang menerima data yang berisi ID grup
+        socket.on('capture_now', (data) => {
+            const captureGroupId = data.capture_group_id;
+            sendFrame(captureGroupId);
+        });
+    });
+</script>
+{% endblock %}

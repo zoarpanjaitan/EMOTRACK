@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+     <style>
+        body { font-family: sans-serif; padding: 20px; }
+        a { color: #d9534f; }
+    </style>
+</head>
+<body>
+    <h1>Selamat Datang di Dashboard, {{ session.username }}!</h1>
+    <p>Peran Anda adalah: <strong>{{ session.role }}</strong></p>
+    <br>
+    <a href="/logout">Logout</a>
+</body>
+</html>

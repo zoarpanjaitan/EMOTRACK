@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Ruang Kontrol - {{ kelas.nama_kelas }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header Navigasi -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center text-xl font-bold">
+                        👨‍🏫 EMOTRACK
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-600 mr-4">Halo, <strong>{{ session.username }}</strong>!</span>
+                    <a href="/logout" class="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- KONTEN UTAMA -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- Kolom Kiri: Tombol Kontrol -->
+                <div class="md:col-span-2 bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3 mb-4">Ruang Kontrol Live: {{ kelas.nama_kelas }}</h2>
+                    <p class="text-sm text-gray-600 mb-6">Gunakan tombol di bawah untuk mengontrol kamera siswa di kelas ini secara serentak.</p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button id="start-btn" class="flex-1 px-4 py-2 font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors">Nyalakan Semua Kamera</button>
+                        <button id="stop-btn" class="flex-1 px-4 py-2 font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 transition-colors">Matikan Semua Kamera</button>
+                        <button id="capture-btn" class="flex-1 px-4 py-2 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">Ambil Gambar & Analisis</button>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Daftar Siswa -->
+                <div class="md:col-span-1 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-800 border-b pb-3 mb-4">Siswa yang Hadir</h3>
+                    {% if siswa_approved %}
+                        <ul class="space-y-2">
+                            {% for siswa in siswa_approved %}
+                                <li class="p-3 bg-gray-50 rounded-md">
+                                    <span class="font-medium text-gray-800">{{ siswa.username }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-sm text-gray-500">Belum ada siswa yang disetujui di kelas ini.</p>
+                    {% endif %}
+                    
+                    <div class="mt-4 border-t pt-4">
+                        <a href="{{ url_for('hasil_analisis', class_id=kelas.id) }}" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
+                            Lihat Laporan Analisis
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+            <div class="mt-8">
+                <a href="{{ url_for('dashboard_guru') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                    &larr; Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- BAGIAN BARU: ELEMEN UNTUK NOTIFIKASI -->
+<div id="notification" class="fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg text-white font-semibold transition-opacity duration-300 opacity-0" style="display: none;">
+    Perintah berhasil dikirim!
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        const classId = "{{ kelas.id }}";
+        
+        // BAGIAN BARU: Logika untuk menampilkan notifikasi
+        const notification = document.getElementById('notification');
+        let notificationTimeout;
+
+        function showNotification(message, colorClass) {
+            // Hapus timeout sebelumnya jika ada
+            clearTimeout(notificationTimeout);
+
+            notification.textContent = message;
+            // Hapus kelas warna sebelumnya dan tambahkan yang baru
+            notification.classList.remove('bg-green-600', 'bg-gray-600', 'bg-blue-600');
+            notification.classList.add(colorClass);
+
+            notification.style.display = 'block';
+            // Trigger reflow untuk memulai transisi
+            notification.offsetHeight; 
+            notification.style.opacity = 1;
+
+            // Atur timeout untuk menyembunyikan notifikasi
+            notificationTimeout = setTimeout(() => {
+                notification.style.opacity = 0;
+                // Tunggu transisi selesai sebelum menyembunyikan elemen
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
+            }, 3000); // Notifikasi akan hilang setelah 3 detik
+        }
+
+        socket.on('connect', () => {
+            socket.emit('join_teacher_room', { room: classId });
+        });
+
+        // Tambahkan pemanggilan showNotification() pada setiap tombol
+        document.getElementById('start-btn').onclick = () => {
+            socket.emit('teacher_command', { room: classId, command: 'start_camera' });
+            showNotification('Perintah "Nyalakan Kamera" terkirim!', 'bg-green-600');
+        };
+
+        document.getElementById('stop-btn').onclick = () => {
+            socket.emit('teacher_command', { room: classId, command: 'stop_camera' });
+            showNotification('Perintah "Matikan Kamera" terkirim!', 'bg-gray-600');
+        };
+
+        document.getElementById('capture-btn').onclick = () => {
+            socket.emit('teacher_command', { room: classId, command: 'trigger_capture' });
+            showNotification('Perintah "Ambil Gambar" terkirim!', 'bg-blue-600');
+        };
+    });
+</script>
+{% endblock %}
