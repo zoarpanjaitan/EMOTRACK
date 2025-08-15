@@ -11,6 +11,7 @@ import cv2
 from deepface import DeepFace
 from collections import Counter
 import datetime
+import os
 
 # Inisialisasi Aplikasi
 app = Flask(__name__)
@@ -19,7 +20,8 @@ app = Flask(__name__)
 # Mengambil DATABASE_URL dari environment variable Render.
 # Jika tidak ada (saat jalan di lokal), gunakan sqlite.
 # .replace() diperlukan karena Render menggunakan "postgres://" bukan "postgresql://"
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///emotrack.db').replace("postgres://", "postgresql://", 1)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kunci-rahasia-super-aman-untuk-deploy')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
