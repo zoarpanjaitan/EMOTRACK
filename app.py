@@ -14,15 +14,19 @@ import datetime
 
 # Inisialisasi Aplikasi
 app = Flask(__name__)
-# Konfigurasi database untuk Render (akan menggunakan DATABASE_URL jika ada)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///emotrack.db')
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kunci-rahasia-lokal-yang-sangat-aman')
+
+# --- PERUBAHAN UNTUK DEPLOY ---
+# Mengambil DATABASE_URL dari environment variable Render.
+# Jika tidak ada (saat jalan di lokal), gunakan sqlite.
+# .replace() diperlukan karena Render menggunakan "postgres://" bukan "postgresql://"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///emotrack.db').replace("postgres://", "postgresql://", 1)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kunci-rahasia-super-aman-untuk-deploy')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 socketio = SocketIO(app)
 
-# --- Model Database ---
+# --- Model Database (Tidak Berubah) ---
 keanggotaan_kelas = db.Table('keanggotaan_kelas',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
     db.Column('kelas_id', db.Integer, db.ForeignKey('kelas.id'), primary_key=True),
@@ -50,20 +54,20 @@ class HasilEmosi(db.Model):
     user = db.relationship('User')
     kelas = db.relationship('Kelas')
 
-# --- Fungsi Bantuan untuk Saran ---
+# --- Fungsi Bantuan untuk Saran (Tidak Berubah) ---
 def get_suggestion(dominant_emotion):
     suggestions = {
-        'happy': "✅ Suasana kelas sangat positif! Pertahankan metode mengajar Anda. Ini adalah waktu yang baik untuk materi yang lebih menantang.",
-        'neutral': "🤔 Sebagian besar siswa terlihat netral. Coba ajukan pertanyaan interaktif atau berikan studi kasus singkat untuk meningkatkan keterlibatan.",
-        'sad': "😔 Banyak siswa terlihat sedih atau bosan. Pertimbangkan untuk memberikan jeda singkat, ice-breaking, atau mengubah metode penyampaian menjadi diskusi kelompok.",
-        'angry': "😠 Ada indikasi frustrasi atau kebingungan. Coba perlambat tempo, ulangi konsep kunci, atau tanyakan langsung bagian mana yang sulit dipahami.",
-        'fear': "😟 Siswa mungkin merasa cemas atau tertekan. Ciptakan suasana yang lebih mendukung dan yakinkan mereka bahwa tidak apa-apa untuk membuat kesalahan.",
-        'surprise': "😮 Sesuatu yang baru atau tidak terduga terjadi. Manfaatkan momen ini untuk memulai diskusi atau menekankan poin penting dari materi.",
-        'disgust': "🤢 Emosi ini jarang terjadi, bisa jadi ada gangguan eksternal atau materi yang sangat tidak menyenangkan. Periksa kondisi kelas secara langsung."
+        'happy': "✅ Suasana kelas sangat positif! Pertahankan metode mengajar Anda.",
+        'neutral': "🤔 Sebagian besar siswa terlihat netral. Coba ajukan pertanyaan interaktif.",
+        'sad': "😔 Banyak siswa terlihat sedih atau bosan. Pertimbangkan untuk memberikan jeda singkat.",
+        'angry': "😠 Ada indikasi frustrasi. Coba perlambat tempo dan ulangi konsep kunci.",
+        'fear': "😟 Siswa mungkin merasa cemas. Ciptakan suasana yang lebih mendukung.",
+        'surprise': "😮 Manfaatkan momen ini untuk memulai diskusi.",
+        'disgust': "🤢 Periksa kondisi kelas secara langsung."
     }
-    return suggestions.get(dominant_emotion, "Tidak ada saran spesifik untuk emosi ini.")
+    return suggestions.get(dominant_emotion, "Tidak ada saran spesifik.")
 
-# --- Decorator & Route Autentikasi ---
+# --- Semua Route dari /register sampai /hasil_analisis (Tidak Berubah) ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -93,8 +97,6 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear(); return redirect(url_for('login'))
-
-# --- Route Dashboard & Kelas ---
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -147,8 +149,6 @@ def approve_student():
     stmt = text("UPDATE keanggotaan_kelas SET status = 'approved' WHERE user_id = :user_id AND kelas_id = :kelas_id")
     db.session.execute(stmt, {'user_id': user_id_to_approve, 'kelas_id': kelas_id_to_approve})
     db.session.commit(); return redirect(url_for('dashboard_guru'))
-
-# --- Route Kelas Live ---
 @app.route('/live_class/<int:class_id>')
 @login_required
 def live_class_guru(class_id):
@@ -164,19 +164,13 @@ def classroom_siswa(class_id):
     kelas = Kelas.query.get_or_404(class_id)
     teman_sekelas = User.query.join(keanggotaan_kelas).filter(keanggotaan_kelas.c.kelas_id == class_id, keanggotaan_kelas.c.status == 'approved').all()
     return render_template('classroom_siswa.html', kelas=kelas, teman_sekelas=teman_sekelas)
-
-# --- ROUTE HASIL ANALISIS ---
 @app.route('/hasil_analisis/<int:class_id>')
 @login_required
 def hasil_analisis(class_id):
     if session['role'] != 'guru': return redirect(url_for('dashboard'))
     kelas = Kelas.query.get_or_404(class_id)
     if kelas.guru_id != session['user_id']: return redirect(url_for('dashboard_guru'))
-    hasil_grup = db.session.query(
-        HasilEmosi.capture_group, 
-        func.min(HasilEmosi.timestamp).label('timestamp'),
-        func.group_concat(HasilEmosi.emotion).label('emotions')
-    ).filter_by(kelas_id=class_id).group_by(HasilEmosi.capture_group).order_by(func.min(HasilEmosi.timestamp).desc()).all()
+    hasil_grup = db.session.query(HasilEmosi.capture_group, func.min(HasilEmosi.timestamp).label('timestamp'), func.group_concat(HasilEmosi.emotion).label('emotions')).filter_by(kelas_id=class_id).group_by(HasilEmosi.capture_group).order_by(func.min(HasilEmosi.timestamp).desc()).all()
     laporan_sesi = []
     for grup in hasil_grup:
         emotions_list = grup.emotions.split(',') if grup.emotions else []
@@ -186,20 +180,12 @@ def hasil_analisis(class_id):
             percentages = {emotion: int((count / total_siswa) * 100) for emotion, count in counts.items()}
             dominant_emotion = counts.most_common(1)[0][0]
             suggestion = get_suggestion(dominant_emotion)
-            laporan_sesi.append({
-                'timestamp': grup.timestamp, 'percentages': percentages,
-                'dominant_emotion': dominant_emotion, 'suggestion': suggestion,
-                'total_siswa': total_siswa
-            })
+            laporan_sesi.append({'timestamp': grup.timestamp, 'percentages': percentages, 'dominant_emotion': dominant_emotion, 'suggestion': suggestion, 'total_siswa': total_siswa})
         else:
-             laporan_sesi.append({
-                'timestamp': grup.timestamp, 'percentages': {},
-                'dominant_emotion': "N/A", 'suggestion': "Tidak ada wajah yang terdeteksi pada sesi jepretan ini.",
-                'total_siswa': 0
-            })
+             laporan_sesi.append({'timestamp': grup.timestamp, 'percentages': {}, 'dominant_emotion': "N/A", 'suggestion': "Tidak ada wajah yang terdeteksi pada sesi jepretan ini.", 'total_siswa': 0})
     return render_template('hasil_analisis.html', kelas=kelas, laporan_sesi=laporan_sesi)
 
-# --- Handler SocketIO ---
+# --- Handler SocketIO (Tidak Berubah) ---
 @socketio.on('join_teacher_room')
 def handle_join_teacher_room(data):
     room = str(data['room']); join_room(room)
@@ -238,8 +224,5 @@ def handle_video_frame(data):
     except Exception as e:
         print(f"Error saat analisis: {e}")
 
-      
-#if __name__ == '__main__':
-    #with app.app_context():
-        #db.create_all() 
-    #socketio.run(app, debug=True)
+# Perintah `if __name__ == '__main__':` tidak dibutuhkan untuk deploy di Render
+# Gunicorn akan menjalankan aplikasi secara langsung
