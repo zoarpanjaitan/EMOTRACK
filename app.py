@@ -238,9 +238,8 @@ def handle_video_frame(data):
     except Exception as e:
         print(f"Error saat analisis: {e}")
 
-if __name__ == '__main__':
-    # Perubahan untuk deploy di Render
-    port = int(os.environ.get('PORT', 5000))
-    with app.app_context():
-        db.create_all() 
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+      
+#if __name__ == '__main__':
+    #with app.app_context():
+        #db.create_all() 
+    #socketio.run(app, debug=True)
